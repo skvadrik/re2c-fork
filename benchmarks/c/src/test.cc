@@ -46,6 +46,8 @@ int main(int argc, char** argv) {
 
     bool ok = true;
 
+    TEST(lex_00__int, int, 230, 16777350, 0);
+
     TEST(submatch_00__http_rfc7230, http, 3474, 15445404, 0);
     TEST(submatch_01__http_simple, http, 3661, 16276806, 0);
     TEST(submatch_02__uri_rfc3986, uri, 1929, 16037706, 0);

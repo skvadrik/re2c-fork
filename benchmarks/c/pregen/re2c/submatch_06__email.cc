@@ -143,7 +143,8 @@ static inline void init_input_buffered_scc(input_t *in, const char* fname) {
 
 int lex_simple(input_t *in) {
     char *cur = in->buf, *mar, *tok;
-    (void) tok; // may be unused
+    (void) mar; // maybe unused
+    (void) tok; // maybe unused
     char *yyt1;
 
     

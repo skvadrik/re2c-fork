@@ -233,7 +233,8 @@ in->yyt9 = 0;
 
 int lex_simple(input_t *in) {
     char *cur = in->buf, *mar, *tok;
-    (void) tok; // may be unused
+    (void) mar; // maybe unused
+    (void) tok; // maybe unused
     char *yyt1;
 char *yyt10;
 char *yyt11;

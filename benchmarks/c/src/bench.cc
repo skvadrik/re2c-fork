@@ -19,6 +19,8 @@ int main(int argc, char** argv) {
     benchmark::Initialize(&argc, argv);
     benchmark::SetDefaultTimeUnit(benchmark::kMillisecond);
 
+    GROUP(lex_00__int, "lex-int", int, 230, 16777350);
+
     GROUP(submatch_00__http_rfc7230, "http-rfc7230", http, 3474, 15445404);
     GROUP(submatch_01__http_simple, "http-simple", http, 3661, 16276806);
     GROUP(submatch_02__uri_rfc3986, "uri-rfc3986", uri, 1929, 16037706);

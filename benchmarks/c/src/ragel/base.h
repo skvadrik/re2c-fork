@@ -15,7 +15,10 @@ struct Input {
 
 static inline bool init_input_simple(Input *in, const char *fname) {
     FILE* f = fopen(fname, "rb");
-    if (f == nullptr) return false;
+    if (f == nullptr) {
+        in->p = in->pe = in->end = in->buf = nullptr;
+        return false;
+    }
 
     fseek(f, 0, SEEK_END);
     size_t flen = (size_t) ftell(f);
@@ -35,10 +38,13 @@ static inline bool init_input_simple(Input *in, const char *fname) {
 
 static inline bool init_input_buffered(Input *in, const char *fname) {
     in->file = fopen(fname, "rb");
-    if (in->file == nullptr) return false;
+    if (in->file == nullptr) {
+        in->p = in->pe = in->end = in->buf = nullptr;
+        return false;
+    }
     in->buf = (char*) malloc(SIZE);
     in->p = in->pe = in->end = in->buf;
-    return true;;
+    return true;
 }
 
 static inline void free_input(Input *in) {
@@ -144,6 +150,7 @@ namespace ragel_##name { \
     bool test_simple(const char* input, long expected); \
     bool test_buffered(const char* input, long expected); \
 }
+BENCH(lex_00__int)
 BENCH(submatch_00__http_rfc7230)
 BENCH(submatch_01__http_simple)
 BENCH(submatch_02__uri_rfc3986)

@@ -227,7 +227,8 @@ in->yytm9 = 0;
 
 int lex_simple(input_t *in) {
     char *cur = in->buf, *mar, *tok;
-    (void) tok; // may be unused
+    (void) mar; // maybe unused
+    (void) tok; // maybe unused
     
     taglist_t *yytm1 = nullptr;
 taglist_t *yytm10 = nullptr;
