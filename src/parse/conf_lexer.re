@@ -271,6 +271,7 @@ Ret Input::lex_conf(Opt& opts) {
     "flags:"? "debug-output"   | "flags:d"    { RET_CONF_BOOL(debug); }
     "flags:"? "computed-gotos" | "flags:g"    { RET_CONF_FEAT(computed_gotos, "computed-gotos"); }
     ("computed-gotos" | "cgoto") ":threshold" { RET_CONF_NUM_NONNEG(computed_gotos_threshold); }
+    ("computed-gotos" | "cgoto") ":relative"  { RET_CONF_BOOL(computed_gotos_relative); }
     "flags:"? "nested-ifs"     | "flags:s"    { RET_CONF_FEAT(nested_ifs, "nested-ifs"); }
     "flags:"? "case-insensitive"              { RET_CONF_BOOL(case_insensitive); }
     "flags:"? "case-inverted"                 { RET_CONF_BOOL(case_inverted); }
@@ -595,6 +596,7 @@ start:
     "code:type_uint"              { RET_CODE(code_type_uint); }
     "code:type_yybm"              { RET_CODE(code_type_yybm); }
     "code:type_yytarget"          { RET_CODE(code_type_yytarget); }
+    "code:type_yytargetoffset"    { RET_CODE(code_type_yytargetoffset); }
     "code:assign"                 { RET_CODE(code_assign); }
     "code:cmp_eq"                 { RET_CODE(code_cmp_eq); }
     "code:cmp_ne"                 { RET_CODE(code_cmp_ne); }

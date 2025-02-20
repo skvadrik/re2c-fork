@@ -196,6 +196,7 @@ LOCAL_NODISCARD(Ret fix_mutopt(
     }
     if (!real.computed_gotos) {
         real.computed_gotos_threshold = defaults.computed_gotos_threshold;
+        real.computed_gotos_relative = defaults.computed_gotos_relative;
         real.var_computed_gotos_table = defaults.var_computed_gotos_table;
     }
     if (!real.debug) {

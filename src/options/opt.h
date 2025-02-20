@@ -121,6 +121,9 @@ using StxCodes = list_t<StxCode>;
     CODE_TEMPLATE(type_yytarget, \
         ({}), ({}), ({}) \
     ) \
+    CODE_TEMPLATE(type_yytargetoffset, \
+        ({}), ({}), ({}) \
+    ) \
     CODE_TEMPLATE(cmp_eq, \
         ({}), ({}), ({}) \
     ) \
@@ -457,6 +460,7 @@ enum class StxVarId : uint32_t {
     MUTOPT(std::string, var_accept, "yyaccept") \
     MUTOPT(std::string, var_bitmaps, "yybm") \
     MUTOPT(std::string, var_computed_gotos_table, "yytarget") \
+    MUTOPT(std::string, var_computed_gotos_offset_table, "yytargetoffset") \
     MUTOPT(std::string, var_char, "yych") \
     MUTOPT(std::string, var_cond, "yycond") \
     MUTOPT(std::string, var_cond_table, "yyctable") \
@@ -470,6 +474,7 @@ enum class StxVarId : uint32_t {
     MUTOPT(bool, bitmaps_hex, false) \
     MUTOPT(bool, case_ranges, false) \
     MUTOPT(bool, computed_gotos, false) \
+    MUTOPT(bool, computed_gotos_relative, false) \
     MUTOPT(uint32_t, computed_gotos_threshold, 9) \
     MUTOPT(bool, nested_ifs, false) \
     MUTOPT(bool, unsafe, true) \
