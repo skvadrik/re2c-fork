@@ -754,19 +754,26 @@ static CodeList* gen_goswif(
            : gen_goif(output, dfa, go->goif, from);
 }
 
-static CodeList* gen_gocp_table(Output& output, const CodeGoCpTable* go) {
+static CodeList* gen_gocp_table(Output& output, const CodeGoCpTable* go, uint32_t min_index) {
     const opt_t* opts = output.block().opts;
     OutAllocator& alc = output.allocator;
     Scratchbuf& buf = output.scratchbuf;
 
     const char** elems = alc.alloct<const char*>(CodeGoCpTable::TABLE_SIZE);
+    const char* name = opts->var_computed_gotos_table.c_str();
+
     for (uint32_t i = 0; i < CodeGoCpTable::TABLE_SIZE; ++i) {
-        elems[i] = buf.cstr("&&").str(opts->label_prefix).u32(go->table[i]->label->index).flush();
+        buf.cstr("(typeof(*").cstr(name).cstr("))((char *)&&").str(opts->label_prefix).u32(go->table[i]->label->index);
+        if (opts->computed_gotos_relative) {
+            buf.cstr(" - (char *)&&").str(opts->label_prefix).u32(min_index);
+        }
+        elems[i] = buf.cstr(")").flush();
     }
 
-    const char* name = opts->var_computed_gotos_table.c_str();
-    const char* type = opts->gen_code_type_yytarget(buf);
-    // In rec/func mode tables are reused across different fnctions, so they must be global.
+    const char* type = opts->computed_gotos_relative ?
+        opts->gen_code_type_yytargetoffset(buf) : opts->gen_code_type_yytarget(buf);
+
+    // In rec/func mode tables are reused across different functions, so they must be global.
     bool local = opts->code_model != CodeModel::REC_FUNC;
 
     CodeList* stmts = code_list(alc);
@@ -779,11 +786,22 @@ static CodeList* gen_gocp(Output& output, const Adfa& dfa, const CodeGoCp* go, c
     const opt_t* opts = output.block().opts;
     OutAllocator& alc = output.allocator;
     Scratchbuf& buf = output.scratchbuf;
+    uint32_t min_index = UINT32_MAX;
+
+    if (opts->computed_gotos_relative) {
+        for (uint32_t i = 0; i < CodeGoCpTable::TABLE_SIZE; ++i) {
+            min_index = std::min(go->table->table[i]->label->index, min_index);
+        }
+    }
 
     CodeList* stmts = code_list(alc);
+    CodeList* if_else = gen_gocp_table(output, go->table, min_index);
 
-    CodeList* if_else = gen_gocp_table(output, go->table);
-    buf.cstr("*").str(opts->var_computed_gotos_table).cstr("[").str(opts->var_char).cstr("]");
+    buf.cstr("*(");
+    if (opts->computed_gotos_relative) {
+        buf.cstr("(char *)&&").str(opts->label_prefix).u32(min_index).cstr(" + ");
+    }
+    buf.str(opts->var_computed_gotos_table).cstr("[").str(opts->var_char).cstr("])");
     append(if_else, code_goto(alc, buf.flush()));
 
     if (go->hgo != nullptr) {
@@ -919,19 +937,35 @@ static void emit_accept(
     // jump table
     if (opts->computed_gotos && nacc >= opts->computed_gotos_threshold && !have_tags) {
         CodeList* block = code_list(alc);
+        uint32_t min_index = UINT32_MAX;
+
+        if (opts->computed_gotos_relative) {
+            for (uint32_t i = 0; i < nacc; ++i) {
+                min_index = std::min(acc[i].state->label->index, min_index);
+            }
+        }
 
         const char** elems = alc.alloct<const char*>(nacc);
-        for (uint32_t i = 0; i < nacc; ++i) {
-            buf.cstr("&&").str(opts->label_prefix).u32(acc[i].state->label->index);
-            elems[i] = buf.flush();
-        }
         const char* name = opts->var_computed_gotos_table.c_str();
-        const char* type = opts->gen_code_type_yytarget(buf);
+
+        for (uint32_t i = 0; i < nacc; ++i) {
+            buf.cstr("(typeof(*").cstr(name).cstr("))((char *)&&").str(opts->label_prefix).u32(acc[i].state->label->index);
+            if (opts->computed_gotos_relative) {
+                buf.cstr(" - (char *)&&").str(opts->label_prefix).u32(min_index);
+            }
+            elems[i] = buf.cstr(")").flush();
+        }
+        const char* type = opts->computed_gotos_relative ?
+            opts->gen_code_type_yytargetoffset(buf) : opts->gen_code_type_yytarget(buf);
 
         // In rec/func mode the table can be local, as it's used in the same function.
         append(block, code_array(alc, name, type, elems, nacc, /*local*/ true));
 
-        buf.cstr("*").str(opts->var_computed_gotos_table).cstr("[").cstr(var).cstr("]");
+        buf.cstr("*(");
+        if (opts->computed_gotos_relative) {
+            buf.cstr("(char *)&&").str(opts->label_prefix).u32(min_index).cstr(" + ");
+        }
+        buf.str(opts->var_computed_gotos_table).cstr("[").str(opts->var_char).cstr("])");
         append(block, code_goto(alc, buf.flush()));
 
         append(stmts, code_block(alc, block, CodeBlock::Kind::WRAPPED));
@@ -1571,7 +1605,12 @@ static CodeList* gen_cond_goto(Output& output) {
     const char* getcond = opts->gen_code_yygetcond(buf, callback);
 
     if (opts->computed_gotos) {
-        buf.cstr("*").str(opts->var_cond_table).cstr("[").cstr(getcond).cstr("]");
+        buf.cstr("*(");
+        if (opts->computed_gotos_relative) {
+            buf.cstr("(char *)&&").str(opts->cond_label_prefix).str(conds.front().name).cstr(" + ");
+        }
+        buf.str(opts->var_cond_table).cstr("[").cstr(getcond).cstr("])");
+
         append(stmts, code_goto(alc, buf.flush()));
     } else if (opts->nested_ifs) {
         warn_cond_ord &= ncond > 1;
@@ -1610,12 +1649,17 @@ static CodeList* gen_cond_table(Output& output) {
 
     CodeList* code = code_list(alc);
 
+    const char* name = opts->var_cond_table.c_str();
     const char** elems = alc.alloct<const char*>(conds.size());
     for (size_t i = 0; i < conds.size(); ++i) {
-        elems[i] = buf.cstr("&&").str(opts->cond_label_prefix).str(conds[i].name).flush();
+        buf.cstr("(typeof(*").cstr(name).cstr("))((char *)&&").str(opts->cond_label_prefix).str(conds[i].name);
+        if (opts->computed_gotos_relative) {
+            buf.cstr(" - (char *)&&").str(opts->cond_label_prefix).str(conds.front().name);
+        }
+        elems[i] = buf.cstr(")").flush();
     }
-    const char* name = opts->var_cond_table.c_str();
-    const char* type = opts->gen_code_type_yytarget(buf);
+    const char* type = opts->computed_gotos_relative ?
+        opts->gen_code_type_yytargetoffset(buf) : opts->gen_code_type_yytarget(buf);
 
     // In rec/func mode the table can be local, as it's used in the same function.
     append(code, code_array(alc, name, type, elems, conds.size(), /*local*/ true));
